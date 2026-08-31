@@ -10,7 +10,7 @@ def generate_mesh(x_coords, y_coords, config):
 
     # Geometria profilu.
     airfoil_pts = []
-    lc_airfoil = 0.015  # Wymuszenie mniejszego rozmiaru elementu na ściance profilu.
+    lc_airfoil = 0.005  # Wymuszenie mniejszego rozmiaru elementu na ściance profilu.
     
     # Pominięcie ostatniego punktu (duplikatu krawędzi spływu).
     for x, y in zip(x_coords[:-1], y_coords[:-1]):
@@ -42,12 +42,15 @@ def generate_mesh(x_coords, y_coords, config):
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
 
-    # Definicja warstwy przyściennej (Boundary Layer) dla RANS.
+    # Definicja warstwy przyściennej dla RANS.
     gmsh.model.mesh.field.add("BoundaryLayer", 1)
     gmsh.model.mesh.field.setNumbers(1, "CurvesList", [airfoil_curve])
-    gmsh.model.mesh.field.setNumber(1, "Size", 0.0005)      # Wysokość pierwszej komórki (szacunkowo dla y+ ~ 1)
-    gmsh.model.mesh.field.setNumber(1, "Ratio", 1.2)        # Współczynnik przyrostu
-    gmsh.model.mesh.field.setNumber(1, "Thickness", 0.05)   # Całkowita grubość warstwy
+    
+    # Parametry dla y+ ~ 1 (przy Re = 3e6).
+    gmsh.model.mesh.field.setNumber(1, "Size", 0.00001)
+    gmsh.model.mesh.field.setNumber(1, "Ratio", 1.15)
+    gmsh.model.mesh.field.setNumber(1, "Thickness", 0.03)
+    gmsh.model.mesh.field.setNumber(1, "Quads", 1) # wymuszenie kształtu elementów w warstwie przyściennej (quad).
     gmsh.model.mesh.field.setAsBoundaryLayer(1)
 
     # Definicja prostokątnego obszaru zagęszczenia w śladzie torowym (Wake Refinement).
@@ -81,6 +84,23 @@ def generate_mesh(x_coords, y_coords, config):
     # Generacja i zapis siatki (format .su2).
     gmsh.model.mesh.generate(2)
     output_path = os.path.join(config["workspace_dir"], config["mesh_filename"])
-    gmsh.write(output_path)
+
+    # Generacja siatki.
+    gmsh.model.mesh.generate(2)
     
+    # Ekstrakcja statystyk i weryfikacja udzialu elementow czworokatnych.
+    elem_types, elem_tags, _ = gmsh.model.mesh.getElements(2)
+    num_tris = 0
+    num_quads = 0
+    
+    for e_type, tags in zip(elem_types, elem_tags):
+        if e_type == 2:    # Element trojkatny (3-wezlowy)
+            num_tris += len(tags)
+        elif e_type == 3:  # Element czworokatny (4-wezlowy)
+            num_quads += len(tags)
+            
+    print(f"   [GMSH] Raport siatki - Trójkąty: {num_tris}, Czworokąty: {num_quads}")
+
+    output_path = os.path.join(config["workspace_dir"], config["mesh_filename"])
+    gmsh.write(output_path)
     gmsh.finalize()

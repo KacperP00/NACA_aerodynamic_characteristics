@@ -2,6 +2,7 @@ import os
 import csv
 import matplotlib.pyplot as plt
 
+
 def plot_polar(config):
     workspace_dir = config["workspace_dir"]
     alphas = range(config["alpha_start"], config["alpha_end"] + 1, config["alpha_step"])
@@ -19,19 +20,29 @@ def plot_polar(config):
             continue
             
         # Ekstrakcja ostatnich wartości współczynników sił aerodynamicznych.
+        # Ekstrakcja z uśrednianiem (wygładzanie niestacjonarnych oscylacji w RANS).
         with open(history_file, 'r') as csvfile:
             reader = csv.DictReader(csvfile)
-            # Zabezpieczenie na wypadek białych znaków w nagłówkach z SU2.
             headers = [h.strip().replace('"', '') for h in reader.fieldnames]
             reader.fieldnames = headers
             
-            last_row = None
+            cl_history = []
+            cd_history = []
+            
             for row in reader:
-                last_row = row
+                cl_history.append(float(row.get("CL", 0)))
+                cd_history.append(float(row.get("CD", 0)))
                 
-            if last_row:
-                cl_list.append(float(last_row.get("CL", 0)))
-                cd_list.append(float(last_row.get("CD", 0)))
+            if cl_history:
+                # Rozmiar okna uśredniania.
+                window = min(100, len(cl_history))
+                
+                # Obliczenie średniej arytmetycznej z końcówki symulacji.
+                cl_avg = sum(cl_history[-window:]) / window
+                cd_avg = sum(cd_history[-window:]) / window
+                
+                cl_list.append(cl_avg)
+                cd_list.append(cd_avg)
                 alpha_list.append(alpha)
 
     # Generowanie wykresu biegunowej i zapis do pliku (omijanie problemów z GUI na WSL).
@@ -51,6 +62,20 @@ def plot_polar(config):
     plt.ylabel("Współczynnik siły nośnej (Cl)")
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.legend()
+    # Wczytanie danych eksperymentalnych do walidacji.
+    exp_file = "naca0012_exp.csv"
+    if os.path.exists(exp_file):
+        exp_cl = []
+        exp_cd = []
+        with open(exp_file, 'r') as exp_csv:
+            reader = csv.DictReader(exp_csv)
+            for row in reader:
+                exp_cl.append(float(row["CL"]))
+                exp_cd.append(float(row["CD"]))
+        
+        # Nalozenie krzywej tunelowej na wykres biegunowej.
+        plt.plot(exp_cd, exp_cl, 'r--', marker='s', label='Eksperyment (Re=3e6)')
+        plt.legend()
     
     output_plot = os.path.join(workspace_dir, "polar_plot.png")
     plt.savefig(output_plot, dpi=300)

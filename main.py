@@ -1,4 +1,6 @@
 import os
+import time
+import datetime
 import numpy as np
 from geometry import generate_naca4
 from meshing import generate_mesh
@@ -6,6 +8,7 @@ from simulation import run_su2_cases
 from postprocessing import plot_polar
 
 def main():
+    start_time = time.time()
     # Konfiguracja parametrów globalnych analizy.
     config = {
         "naca_code": "0012",
@@ -40,6 +43,10 @@ def main():
     # Etap 4: Zbieranie danych i rysowanie biegunowej.
     plot_polar(config)
     print("Biegunowa została wygenerowana.")
+
+    elapsed_time = time.time() - start_time
+    formatted_time = str(datetime.timedelta(seconds=int(elapsed_time)))
+    print(f"--- Czas całkowity: {formatted_time} ---")
 
 if __name__ == "__main__":
     main()
