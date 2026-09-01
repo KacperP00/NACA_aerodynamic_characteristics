@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 from geometry import generate_naca4
 from meshing import generate_mesh
-from simulation import run_su2_cases
+from simulation_parallel import run_su2_cases
 from postprocessing import plot_polar
 
 def main():

@@ -9,18 +9,28 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.model.add("airfoil_domain")
 
     # Geometria profilu.
-    airfoil_pts = []
-    lc_airfoil = 0.005  # Wymuszenie mniejszego rozmiaru elementu na ściance profilu.
+    # Znalezienie indeksu krawedzi natarcia (minimalna wartosc X).
+    min_x = min(x_coords)
+    le_index = list(x_coords).index(min_x)
     
-    # Pominięcie ostatniego punktu (duplikatu krawędzi spływu).
-    for x, y in zip(x_coords[:-1], y_coords[:-1]):
-        airfoil_pts.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
+    lc_airfoil = 0.005
     
-    # Domknięcie topologiczne - ponowne dodanie pierwszego ID.
-    airfoil_pts.append(airfoil_pts[0])
-    airfoil_curve = gmsh.model.geo.addSpline(airfoil_pts)
+    # Punkty dolnej powierzchni (od splywu do natarcia).
+    pts_lower = []
+    for x, y in zip(x_coords[:le_index+1], y_coords[:le_index+1]):
+        pts_lower.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
+        
+    # Punkty gornej powierzchni (od natarcia do splywu).
+    pts_upper = [pts_lower[-1]] 
+    for x, y in zip(x_coords[le_index+1:-1], y_coords[le_index+1:-1]):
+        pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
+    pts_upper.append(pts_lower[0]) 
+    
+    # Utworzenie dwoch niezaleznych krzywych.
+    curve_lower = gmsh.model.geo.addSpline(pts_lower)
+    curve_upper = gmsh.model.geo.addSpline(pts_upper)
 
-    # Definicja domeny zewnętrznej (O-grid).
+    # Definicja domeny zewnetrznej (O-grid).
     R = 20.0
     lc_far = 2.0
     center = gmsh.model.geo.addPoint(0.5, 0, 0)
@@ -35,16 +45,17 @@ def generate_mesh(x_coords, y_coords, config):
     arc3 = gmsh.model.geo.addCircleArc(p3, center, p4)
     arc4 = gmsh.model.geo.addCircleArc(p4, center, p1)
     
-    # Tworzenie pętli i powierzchni obszaru płynu.
     farfield_loop = gmsh.model.geo.addCurveLoop([arc1, arc2, arc3, arc4])
-    airfoil_loop = gmsh.model.geo.addCurveLoop([airfoil_curve])
+    
+    # Zbudowanie petli profilu z dwoch krzywych.
+    airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper])
     
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
 
     # Definicja warstwy przyściennej dla RANS.
     gmsh.model.mesh.field.add("BoundaryLayer", 1)
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [airfoil_curve])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [curve_lower, curve_upper])
     
     # Parametry dla y+ ~ 1 (przy Re = 3e6).
     gmsh.model.mesh.field.setNumber(1, "Size", 0.00001)
@@ -75,7 +86,7 @@ def generate_mesh(x_coords, y_coords, config):
     farfield_group = gmsh.model.addPhysicalGroup(1, [arc1, arc2, arc3, arc4])
     gmsh.model.setPhysicalName(1, farfield_group, "farfield")
     
-    airfoil_group = gmsh.model.addPhysicalGroup(1, [airfoil_curve])
+    airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper])
     gmsh.model.setPhysicalName(1, airfoil_group, "airfoil")
     
     fluid_group = gmsh.model.addPhysicalGroup(2, [surface])
