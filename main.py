@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import numpy as np
+import shutil
 from geometry import generate_naca4
 from meshing import generate_mesh
 from simulation_parallel import run_su2_cases
@@ -15,7 +16,7 @@ def main():
         "mach": 0.15,
         "reynolds": 3000000,
         "alpha_start": -5,
-        "alpha_end": 15,
+        "alpha_end": 12,
         "alpha_step": 1,
         "workspace_dir": "workspace",
         "mesh_filename": "mesh.su2"
@@ -23,7 +24,13 @@ def main():
 
     # Przygotowanie struktury katalogów na pliki tymczasowe i wyniki.
     workspace_path = config["workspace_dir"]
-    if not os.path.exists(workspace_path):
+    # Czyszczenie starych wynikow symulacji.
+    if os.path.exists(workspace_path):
+        for item in os.listdir(workspace_path):
+            if item.startswith("run_alpha_"):
+                dir_to_remove = os.path.join(workspace_path, item)
+                shutil.rmtree(dir_to_remove)
+    else:
         os.makedirs(workspace_path)
 
     print(f"--- Rozpoczęcie analizy zautomatyzowanej NACA {config['naca_code']} ---")

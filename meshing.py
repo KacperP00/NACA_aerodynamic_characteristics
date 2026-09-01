@@ -10,25 +10,26 @@ def generate_mesh(x_coords, y_coords, config):
 
     # Geometria profilu.
     # Znalezienie indeksu krawedzi natarcia (minimalna wartosc X).
+    # Znalezienie indeksu krawedzi natarcia.
     min_x = min(x_coords)
     le_index = list(x_coords).index(min_x)
     
     lc_airfoil = 0.005
     
-    # Punkty dolnej powierzchni (od splywu do natarcia).
+    # Punkty dolnej powierzchni.
     pts_lower = []
     for x, y in zip(x_coords[:le_index+1], y_coords[:le_index+1]):
         pts_lower.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
         
-    # Punkty gornej powierzchni (od natarcia do splywu).
+    # Punkty gornej powierzchni.
     pts_upper = [pts_lower[-1]] 
-    for x, y in zip(x_coords[le_index+1:-1], y_coords[le_index+1:-1]):
+    for x, y in zip(x_coords[le_index+1:], y_coords[le_index+1:]):
         pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
-    pts_upper.append(pts_lower[0]) 
     
-    # Utworzenie dwoch niezaleznych krzywych.
+    # Tworzenie krzywych bocznych i prostej krawedzi splywu.
     curve_lower = gmsh.model.geo.addSpline(pts_lower)
     curve_upper = gmsh.model.geo.addSpline(pts_upper)
+    curve_te = gmsh.model.geo.addLine(pts_upper[-1], pts_lower[0])
 
     # Definicja domeny zewnetrznej (O-grid).
     R = 20.0
@@ -48,55 +49,60 @@ def generate_mesh(x_coords, y_coords, config):
     farfield_loop = gmsh.model.geo.addCurveLoop([arc1, arc2, arc3, arc4])
     
     # Zbudowanie petli profilu z dwoch krzywych.
-    airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper])
-    
+    airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper, curve_te])
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
 
     # Definicja warstwy przyściennej dla RANS.
     gmsh.model.mesh.field.add("BoundaryLayer", 1)
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [curve_lower, curve_upper])
-    
-    # Parametry dla y+ ~ 1 (przy Re = 3e6).
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [curve_lower, curve_upper, curve_te])
     gmsh.model.mesh.field.setNumber(1, "Size", 0.00001)
     gmsh.model.mesh.field.setNumber(1, "Ratio", 1.15)
     gmsh.model.mesh.field.setNumber(1, "Thickness", 0.03)
-    gmsh.model.mesh.field.setNumber(1, "Quads", 1) # wymuszenie kształtu elementów w warstwie przyściennej (quad).
+    gmsh.model.mesh.field.setNumber(1, "Quads", 1)
     gmsh.model.mesh.field.setAsBoundaryLayer(1)
 
-    # Definicja prostokątnego obszaru zagęszczenia w śladzie torowym (Wake Refinement).
+    # 1. Wewnetrzny, drobny box blisko splywu.
     gmsh.model.mesh.field.add("Box", 2)
-    gmsh.model.mesh.field.setNumber(2, "VIn", 0.03)      # Rozmiar elementu wewnątrz śladu
-    gmsh.model.mesh.field.setNumber(2, "VOut", lc_far)   # Rozmiar elementu poza śladem (dalekie pole)
-    gmsh.model.mesh.field.setNumber(2, "XMin", 0.9)      # Początek obszaru (nieco przed krawędzią spływu)
-    gmsh.model.mesh.field.setNumber(2, "XMax", 10.0)     # Zasięg obszaru w dół rzeki
-    gmsh.model.mesh.field.setNumber(2, "YMin", -0.2)     # Dolna granica
-    gmsh.model.mesh.field.setNumber(2, "YMax", 0.2)      # Górna granica
-    gmsh.model.mesh.field.setNumber(2, "Thickness", 0.3) # Szerokość strefy płynnego przejścia siatki
-    
-    # Ustawienie obszaru Box jako tła dla siatki.
-    # Uwaga: Warstwa przyścienna (Field 1) aplikowana jest niezależnie przez setAsBoundaryLayer.
-    gmsh.model.mesh.field.setAsBackgroundMesh(2)
+    gmsh.model.mesh.field.setNumber(2, "VIn", 0.003)
+    gmsh.model.mesh.field.setNumber(2, "VOut", lc_far)
+    gmsh.model.mesh.field.setNumber(2, "XMin", 0.9)
+    gmsh.model.mesh.field.setNumber(2, "XMax", 1.5)
+    gmsh.model.mesh.field.setNumber(2, "YMin", -0.15)
+    gmsh.model.mesh.field.setNumber(2, "YMax", 0.15)
 
-    # Parametryzacja zagęszczenia siatki 2D.
+    # 2. Zewnetrzny, szerszy box dla odchylonego sladu.
+    gmsh.model.mesh.field.add("Box", 3)
+    gmsh.model.mesh.field.setNumber(3, "VIn", 0.01)
+    gmsh.model.mesh.field.setNumber(3, "VOut", lc_far)
+    gmsh.model.mesh.field.setNumber(3, "XMin", 1.5)
+    gmsh.model.mesh.field.setNumber(3, "XMax", 6.0)
+    gmsh.model.mesh.field.setNumber(3, "YMin", -0.5)
+    gmsh.model.mesh.field.setNumber(3, "YMax", 1.0)
+    
+    # 3. Zlaczenie obu obszarow (Gmsh wybierze mniejszy rozmiar elementu).
+    gmsh.model.mesh.field.add("Min", 4)
+    gmsh.model.mesh.field.setNumbers(4, "FieldsList", [2, 3])
+    
+    # Ustawienie połączonego obszaru MIN jako docelowego tła.
+    gmsh.model.mesh.field.setAsBackgroundMesh(4)
+
+    # Parametryzacja zageszczenia siatki 2D.
     gmsh.option.setNumber("Mesh.MeshSizeMin", 0.001)
     gmsh.option.setNumber("Mesh.MeshSizeMax", lc_far)
     
-    # Grupowanie elementów dla oznaczeń w SU2 (MARKER).
+    # Grupowanie elementow dla oznaczen w SU2 (MARKER).
     farfield_group = gmsh.model.addPhysicalGroup(1, [arc1, arc2, arc3, arc4])
     gmsh.model.setPhysicalName(1, farfield_group, "farfield")
     
-    airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper])
+    # Definicja grupy fizycznej profilu.
+    airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper, curve_te])
     gmsh.model.setPhysicalName(1, airfoil_group, "airfoil")
     
     fluid_group = gmsh.model.addPhysicalGroup(2, [surface])
     gmsh.model.setPhysicalName(2, fluid_group, "fluid")
 
-    # Generacja i zapis siatki (format .su2).
-    gmsh.model.mesh.generate(2)
-    output_path = os.path.join(config["workspace_dir"], config["mesh_filename"])
-
-    # Generacja siatki.
+    # Pojedyncza, wlasciwa generacja siatki.
     gmsh.model.mesh.generate(2)
     
     # Ekstrakcja statystyk i weryfikacja udzialu elementow czworokatnych.
