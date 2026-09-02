@@ -16,6 +16,7 @@ def run_single_case(alpha, config, template_content, mesh_path):
     cfg_content = cfg_content.replace("%REYNOLDS%", str(config["reynolds"]))
     cfg_content = cfg_content.replace("%INPUT_MESH%", mesh_path)
     cfg_content = cfg_content.replace("%TURB_MODEL%", config["turb_model"])
+    cfg_content = cfg_content.replace("%TRANS_MODEL%", config["trans_model"])
     cfg_content = cfg_content.replace("%RESTART%", "NO")
     
     cfg_path = os.path.join(run_dir_path, "config.cfg")
@@ -49,7 +50,7 @@ def run_su2_cases(config):
     alphas = range(config["alpha_start"], config["alpha_end"] + 1, config["alpha_step"])
     
     # Ustalenie limitu jednoczesnych procesow (4 dla i7-4790, mozna zwiekszyc dla G15).
-    max_workers = 6
+    max_workers = 5
     print(f"--- Uruchamianie obliczen rownoleglych ({max_workers} procesy) ---")
     
     # Wykorzystanie puli procesow do asynchronicznego uruchamiania przypadkow.
