@@ -23,13 +23,16 @@ def generate_mesh(x_coords, y_coords, config):
         
     # Punkty gornej powierzchni.
     pts_upper = [pts_lower[-1]] 
-    for x, y in zip(x_coords[le_index+1:], y_coords[le_index+1:]):
+    for x, y in zip(x_coords[le_index+1:-1], y_coords[le_index+1:-1]):
         pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
+        
+    # Zszycie krawedzi splywu - uzycie ID pierwszego punktu krzywej dolnej
+    pts_upper.append(pts_lower[0])
     
-    # Tworzenie krzywych bocznych i prostej krawedzi splywu.
+    # Tworzenie krzywych bocznych (profil zamkniety na koncu punktem).
     curve_lower = gmsh.model.geo.addSpline(pts_lower)
     curve_upper = gmsh.model.geo.addSpline(pts_upper)
-    curve_te = gmsh.model.geo.addLine(pts_upper[-1], pts_lower[0])
+    # curve_te = gmsh.model.geo.addLine(pts_upper[-1], pts_lower[0])
 
     # Definicja domeny zewnetrznej (O-grid).
     R = 20.0
@@ -49,13 +52,13 @@ def generate_mesh(x_coords, y_coords, config):
     farfield_loop = gmsh.model.geo.addCurveLoop([arc1, arc2, arc3, arc4])
     
     # Zbudowanie petli profilu z dwoch krzywych.
-    airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper, curve_te])
+    airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper])
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
 
     # Definicja warstwy przyściennej dla RANS.
     gmsh.model.mesh.field.add("BoundaryLayer", 1)
-    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [curve_lower, curve_upper, curve_te])
+    gmsh.model.mesh.field.setNumbers(1, "CurvesList", [curve_lower, curve_upper])
     gmsh.model.mesh.field.setNumber(1, "Size", 0.00001)
     gmsh.model.mesh.field.setNumber(1, "Ratio", 1.15)
     gmsh.model.mesh.field.setNumber(1, "Thickness", 0.03)
@@ -96,7 +99,7 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.model.setPhysicalName(1, farfield_group, "farfield")
     
     # Definicja grupy fizycznej profilu.
-    airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper, curve_te])
+    airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper])
     gmsh.model.setPhysicalName(1, airfoil_group, "airfoil")
     
     fluid_group = gmsh.model.addPhysicalGroup(2, [surface])
