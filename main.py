@@ -16,8 +16,9 @@ def main():
         "mach": 0.15,
         "reynolds": 3000000,
         "alpha_start": 0,
-        "alpha_end": 6,
-        "alpha_step": 6,
+        "alpha_end": 12,
+        "alpha_step": 1,
+        "turb_model": "SA",  
         "workspace_dir": "workspace",
         "mesh_filename": "mesh.su2"
     }

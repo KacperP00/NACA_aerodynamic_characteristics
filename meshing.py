@@ -1,5 +1,8 @@
 import gmsh
 import os
+import matplotlib
+matplotlib.use('Agg')  # Wymusza silnik "headless" - pomija X11 i OpenGL w WSL
+import matplotlib.pyplot as plt
 
 def generate_mesh(x_coords, y_coords, config):
     gmsh.initialize()
@@ -35,7 +38,7 @@ def generate_mesh(x_coords, y_coords, config):
     # curve_te = gmsh.model.geo.addLine(pts_upper[-1], pts_lower[0])
 
     # Definicja domeny zewnetrznej (O-grid).
-    R = 20.0
+    R = 17.0
     lc_far = 2.0
     center = gmsh.model.geo.addPoint(0.5, 0, 0)
     
@@ -83,9 +86,20 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.model.mesh.field.setNumber(3, "YMin", -0.5)
     gmsh.model.mesh.field.setNumber(3, "YMax", 1.0)
     
-    # 3. Zlaczenie obu obszarow (Gmsh wybierze mniejszy rozmiar elementu).
+    # 3. Zageszczenie punktowe na ostrym splywie (likwidacja skoku Cp)
+    gmsh.model.mesh.field.add("Distance", 5)
+    gmsh.model.mesh.field.setNumbers(5, "PointsList", [pts_lower[0]]) # Indeks punktu splywu
+    
+    gmsh.model.mesh.field.add("Threshold", 6)
+    gmsh.model.mesh.field.setNumber(6, "InField", 5)
+    gmsh.model.mesh.field.setNumber(6, "SizeMin", 0.0001)  # B. drobne przejscie
+    gmsh.model.mesh.field.setNumber(6, "SizeMax", lc_far)
+    gmsh.model.mesh.field.setNumber(6, "DistMin", 0.0)
+    gmsh.model.mesh.field.setNumber(6, "DistMax", 0.01)    # Dziala w promieniu 1 cm
+    
+    # 4. Zlaczenie wszystkich obszarow (Gmsh wybierze najmniejszy rozmiar)
     gmsh.model.mesh.field.add("Min", 4)
-    gmsh.model.mesh.field.setNumbers(4, "FieldsList", [2, 3])
+    gmsh.model.mesh.field.setNumbers(4, "FieldsList", [2, 3, 6])
     
     # Ustawienie połączonego obszaru MIN jako docelowego tła.
     gmsh.model.mesh.field.setAsBackgroundMesh(4)
@@ -108,19 +122,78 @@ def generate_mesh(x_coords, y_coords, config):
     # Pojedyncza, wlasciwa generacja siatki.
     gmsh.model.mesh.generate(2)
     
-    # Ekstrakcja statystyk i weryfikacja udzialu elementow czworokatnych.
+    # Ekstrakcja statystyk i weryfikacja udzialu elementow 2D.
     elem_types, elem_tags, _ = gmsh.model.mesh.getElements(2)
     num_tris = 0
     num_quads = 0
     
+    # Inicjalizacja metryki minSICN.
+    sicn_min = 1.0
+    sicn_sum = 0.0
+    total_2d = 0
+    
     for e_type, tags in zip(elem_types, elem_tags):
-        if e_type == 2:    # Element trojkatny (3-wezlowy)
-            num_tris += len(tags)
-        elif e_type == 3:  # Element czworokatny (4-wezlowy)
-            num_quads += len(tags)
+        num_elements = len(tags)
+        if e_type == 2:    # Trojkat
+            num_tris += num_elements
+        elif e_type == 3:  # Czworokat
+            num_quads += num_elements
             
-    print(f"   [GMSH] Raport siatki - Trójkąty: {num_tris}, Czworokąty: {num_quads}")
+        # Obliczenie jakosci elementow (minSICN).
+        qualities = gmsh.model.mesh.getElementQualities(tags, "minSICN")
+        sicn_min = min(sicn_min, min(qualities))
+        sicn_sum += sum(qualities)
+        total_2d += num_elements
+        
+    sicn_avg = sicn_sum / total_2d if total_2d > 0 else 0
+    total_nodes = gmsh.model.mesh.getNodes()[0].size
+    
+    # Zapis raportu do pliku tekstowego.
+    report_path = os.path.join(config["workspace_dir"], "mesh_report.txt")
+    with open(report_path, "w") as f:
+        f.write("--- RAPORT JAKOSCI SIATKI OBLICZENIOWEJ ---\n")
+        f.write(f"Wezly ogolem: {total_nodes}\n")
+        f.write(f"Elementy 2D: {total_2d}\n")
+        f.write(f"  - Trojkaty (tlo): {num_tris}\n")
+        f.write(f"  - Czworokaty (warstwa przyscienna): {num_quads}\n\n")
+        f.write("--- METRYKA minSICN (1.0 = ideal, <= 0.0 = zdegenerowany) ---\n")
+        f.write(f"Minimum minSICN: {sicn_min:.5f}\n")
+        f.write(f"Srednia minSICN: {sicn_avg:.5f}\n\n")
+        f.write("--- WNIOSKI ---\n")
+        if sicn_min <= 0:
+            f.write("[BLAD] Wykryto zdegenerowane elementy (minSICN <= 0). Symulacja moze byc niestabilna.\n")
+        elif sicn_min < 0.1:
+            f.write("[OSTRZEZENIE] Bardzo niska jakosc niektorych elementow (0 < minSICN < 0.1).\n")
+        else:
+            f.write("[OK] Brak zdegenerowanych komorek. Siatka prawidlowa dla solvera RANS.\n")
 
+    print(f"   [GMSH] Raport jakosci siatki zapisano w: {report_path}")
+
+    # Szybki podglad siatki w Matplotlib (tryb headless dla WSL).
+    try:
+        # Ekstrakcja wezlow.
+        _, node_coords, _ = gmsh.model.mesh.getNodes()
+        node_x = node_coords[0::3]
+        node_y = node_coords[1::3]
+        
+        # Generowanie wykresu rozkladu wezlow.
+        plt.figure(figsize=(12, 6))
+        plt.plot(node_x, node_y, 'k.', markersize=0.3, alpha=0.3)
+        plt.xlim(-0.2, 1.2)
+        plt.ylim(-0.4, 0.4)
+        plt.gca().set_aspect('equal')
+        plt.title('Rozklad gestosci siatki wokol profilu (WSL Headless)')
+        plt.xlabel('x [m]')
+        plt.ylabel('y [m]')
+        
+        preview_path = os.path.join(config["workspace_dir"], "mesh_preview_wsl.png")
+        plt.savefig(preview_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"   [PODGLAD] Zapisano podglad siatki (bez GUI) jako: {preview_path}")
+    except Exception as e:
+        print(f"   [BLAD PODGLADU] Nie udalo sie wygenerowac wykresu siatki: {e}")
+
+    # Zapis i zakonczenie.
     output_path = os.path.join(config["workspace_dir"], config["mesh_filename"])
     gmsh.write(output_path)
     gmsh.finalize()
