@@ -50,7 +50,7 @@ def run_su2_cases(config):
     alphas = range(config["alpha_start"], config["alpha_end"] + 1, config["alpha_step"])
     
     # Ustalenie limitu jednoczesnych procesow (4 dla i7-4790, mozna zwiekszyc dla G15).
-    max_workers = 5
+    max_workers = 1
     print(f"--- Uruchamianie obliczen rownoleglych ({max_workers} procesy) ---")
     
     # Wykorzystanie puli procesow do asynchronicznego uruchamiania przypadkow.

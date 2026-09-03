@@ -14,7 +14,8 @@ def generate_naca4(naca_code, n_points=100):
     # Obliczanie rozkładu grubości.
     # Ostatni współczynnik zmieniony na -0.1036 w celu ostrego domknięcia spływu.
     # Modyfikacja wspolczynnika na -0.1036 w celu ostrego domkniecia splywu
-    yt = 5 * t * (0.2969 * np.sqrt(x) - 0.1260 * x - 0.3516 * x**2 + 0.2843 * x**3 - 0.1036 * x**4)
+    # Przywrócony oryginalny współczynnik -0.1015 (tępy spływ)
+    yt = 5 * t * (0.2969 * np.sqrt(x) - 0.1260 * x - 0.3516 * x**2 + 0.2843 * x**3 - 0.1015 * x**4)
     
     yc = np.zeros_like(x)
     dyc_dx = np.zeros_like(x)
