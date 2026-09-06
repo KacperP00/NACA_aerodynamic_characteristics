@@ -16,8 +16,8 @@ def main():
         "mach": 0.15,
         "reynolds": 3000000,
         "alpha_start": 0,
-        "alpha_end": 5, # we fight for lower CD than: 0.00842 for 5 degrees
-        "alpha_step": 5,
+        "alpha_end": 1,
+        "alpha_step": 2,
         "turb_model": "SST",
         "trans_model": "LM",  
         "workspace_dir": "workspace",

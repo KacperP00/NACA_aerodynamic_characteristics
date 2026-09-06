@@ -12,29 +12,26 @@ def generate_mesh(x_coords, y_coords, config):
     # --- 1. GEOMETRIA ---
     min_x = min(x_coords)
     le_index = list(x_coords).index(min_x)
-    
-    # DYNAMICZNA GĘSTOŚĆ (Rozwiązanie bezkonfliktowe)
-    def get_lc(x_val):
-        if x_val < 0.05:
-            return 0.0002
-        else:
-            return 0.002
+    lc_airfoil = 0.002
     
     pts_lower = []
     for x, y in zip(x_coords[:le_index+1], y_coords[:le_index+1]):
-        pts_lower.append(gmsh.model.geo.addPoint(x, y, 0, get_lc(x)))
+        pts_lower.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
         
     pts_upper = [pts_lower[-1]] 
     for x, y in zip(x_coords[le_index+1:], y_coords[le_index+1:]):
-        pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, get_lc(x)))
+        pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
         
+    # Tworzenie krzywych bocznych.
     curve_lower = gmsh.model.geo.addSpline(pts_lower)
     curve_upper = gmsh.model.geo.addSpline(pts_upper)
     
-    # Środek krawędzi spływu (z poprawną wywołaną funkcją get_lc)
-    center_te = gmsh.model.geo.addPoint(1.0, 0.0, 0.0, get_lc(1.0))
-    curve_te = gmsh.model.geo.addCircleArc(pts_lower[0], center_te, pts_upper[-1]) 
+    # Srodek luku zamykajacego krawedz splywu (X=1.0, Y=0.0).
+    center_te = gmsh.model.geo.addPoint(1.0, 0.0, 0.0, lc_airfoil)
     
+    # Utworzenie polokregu CCW (od dolu do gory). Zapewnia wypuklosc na zewnatrz.
+    curve_te = gmsh.model.geo.addCircleArc(pts_lower[0], center_te, pts_upper[-1]) 
+
     R = 15.0
     lc_far = 1.5
     center = gmsh.model.geo.addPoint(0.5, 0, 0)
@@ -50,13 +47,18 @@ def generate_mesh(x_coords, y_coords, config):
     arc4 = gmsh.model.geo.addCircleArc(p4, center, p1)
     
     farfield_loop = gmsh.model.geo.addCurveLoop([arc1, arc2, arc3, arc4])
+    
+    # Zamkniecie petli profilu. Modyfikator '-' odwraca kierunek luku curve_te na z gory w dol.
     airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper, -curve_te])
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
     
+    # Wymuszenie 20 wezlow na luku krawedzi splywu. Zapewnia to plynne odwzorowanie 
+    # krzywizny zamiast ostrego zalamania z 3 punktow. 
     gmsh.model.mesh.setTransfiniteCurve(curve_te, 20)
 
-    # --- 2. ZAGĘSZCZENIE (CAŁKOWICIE USUWAMY BOX 7) ---
+    # --- 2. ZAGĘSZCZENIE (CZYSTA WERSJA) ---
+    # Prosty, pojedynczy box za profilem bez nakładających się gradientów
     gmsh.model.mesh.field.add("Box", 1)
     gmsh.model.mesh.field.setNumber(1, "VIn", 0.002)
     gmsh.model.mesh.field.setNumber(1, "VOut", lc_far)
@@ -68,6 +70,7 @@ def generate_mesh(x_coords, y_coords, config):
 
     # --- 3. WARSTWA PRZYŚCIENNA ---
     gmsh.model.mesh.field.add("BoundaryLayer", 2)
+    # Wrzucamy WSZYSTKIE 3 krzywe. Warstwa idealnie i gładko owinie zaokrąglenie!
     gmsh.model.mesh.field.setNumbers(2, "CurvesList", [curve_lower, curve_upper, curve_te])
     gmsh.model.mesh.field.setNumber(2, "Size", 0.00001)
     gmsh.model.mesh.field.setNumber(2, "Ratio", 1.10)
@@ -77,8 +80,7 @@ def generate_mesh(x_coords, y_coords, config):
 
     # --- 4. ŁĄCZENIE (Czyste tło) ---
     gmsh.model.mesh.field.add("Min", 3)
-    # Lista zawiera TYLKO 1. Usunięcie "7" oraz "2" chroni przed paradoksami.
-    gmsh.model.mesh.field.setNumbers(3, "FieldsList", [1])
+    gmsh.model.mesh.field.setNumbers(3, "FieldsList", [1, 2])
     gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
     # --- 5. BEZPIECZNIK ---
