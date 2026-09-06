@@ -12,7 +12,7 @@ def generate_mesh(x_coords, y_coords, config):
     # --- 1. GEOMETRIA ---
     min_x = min(x_coords)
     le_index = list(x_coords).index(min_x)
-    lc_airfoil = 0.002
+    lc_airfoil = 0.001
     
     pts_lower = []
     for x, y in zip(x_coords[:le_index+1], y_coords[:le_index+1]):
