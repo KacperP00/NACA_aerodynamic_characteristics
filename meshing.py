@@ -9,10 +9,10 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.option.setNumber("General.Terminal", 1)
     gmsh.model.add("airfoil_domain")
 
-    # --- 1. GEOMETRIA ---
+    # --- 1. GEOMETRY ---
     min_x = min(x_coords)
     le_index = list(x_coords).index(min_x)
-    lc_airfoil = 0.001
+    lc_airfoil = 0.001 # proper x^+
     
     pts_lower = []
     for x, y in zip(x_coords[:le_index+1], y_coords[:le_index+1]):
@@ -22,14 +22,14 @@ def generate_mesh(x_coords, y_coords, config):
     for x, y in zip(x_coords[le_index+1:], y_coords[le_index+1:]):
         pts_upper.append(gmsh.model.geo.addPoint(x, y, 0, lc_airfoil))
         
-    # Tworzenie krzywych bocznych.
+    # Creating the side curves.
     curve_lower = gmsh.model.geo.addSpline(pts_lower)
     curve_upper = gmsh.model.geo.addSpline(pts_upper)
     
-    # Srodek luku zamykajacego krawedz splywu (X=1.0, Y=0.0).
+    # Center of the closing arc of the trailing edge (X=1.0, Y=0.0).
     center_te = gmsh.model.geo.addPoint(1.0, 0.0, 0.0, lc_airfoil)
     
-    # Utworzenie polokregu CCW (od dolu do gory). Zapewnia wypuklosc na zewnatrz.
+    # Creation of the closing arc (CCW from bottom to top). Ensures convexity on the outside.
     curve_te = gmsh.model.geo.addCircleArc(pts_lower[0], center_te, pts_upper[-1]) 
 
     R = 15.0
@@ -48,17 +48,17 @@ def generate_mesh(x_coords, y_coords, config):
     
     farfield_loop = gmsh.model.geo.addCurveLoop([arc1, arc2, arc3, arc4])
     
-    # Zamkniecie petli profilu. Modyfikator '-' odwraca kierunek luku curve_te na z gory w dol.
+    # Closing the airfoil loop. The '-' modifier reverses the direction of the curve_te from top to bottom.
     airfoil_loop = gmsh.model.geo.addCurveLoop([curve_lower, curve_upper, -curve_te])
     surface = gmsh.model.geo.addPlaneSurface([farfield_loop, airfoil_loop])
     gmsh.model.geo.synchronize()
     
-    # Wymuszenie 20 wezlow na luku krawedzi splywu. Zapewnia to plynne odwzorowanie 
-    # krzywizny zamiast ostrego zalamania z 3 punktow. 
+    # Forcing 20 nodes on the trailing edge curve. This ensures a smooth representation 
+    # of the curvature instead of a sharp corner with 3 points. 
     gmsh.model.mesh.setTransfiniteCurve(curve_te, 20)
 
-    # --- 2. ZAGĘSZCZENIE (CZYSTA WERSJA) ---
-    # Prosty, pojedynczy box za profilem bez nakładających się gradientów
+    # --- 2. REFINEMENT BOX ---
+    # Mesh refinement box behind the airfoil. The mesh will be finer in this area, which is important for capturing the wake.
     gmsh.model.mesh.field.add("Box", 1)
     gmsh.model.mesh.field.setNumber(1, "VIn", 0.002)
     gmsh.model.mesh.field.setNumber(1, "VOut", lc_far)
@@ -68,9 +68,8 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.model.mesh.field.setNumber(1, "YMax", 0.15)
     gmsh.model.mesh.field.setNumber(1, "Thickness", 2.0)
 
-    # --- 3. WARSTWA PRZYŚCIENNA ---
+    # --- 3. BOUNDARY LAYER  ---
     gmsh.model.mesh.field.add("BoundaryLayer", 2)
-    # Wrzucamy WSZYSTKIE 3 krzywe. Warstwa idealnie i gładko owinie zaokrąglenie!
     gmsh.model.mesh.field.setNumbers(2, "CurvesList", [curve_lower, curve_upper, curve_te])
     gmsh.model.mesh.field.setNumber(2, "Size", 0.00001)
     gmsh.model.mesh.field.setNumber(2, "Ratio", 1.10)
@@ -78,17 +77,17 @@ def generate_mesh(x_coords, y_coords, config):
     gmsh.model.mesh.field.setNumber(2, "Quads", 1)
     gmsh.model.mesh.field.setAsBoundaryLayer(2)
 
-    # --- 4. ŁĄCZENIE (Czyste tło) ---
+    # --- 4. MERGING FIELDS ---
     gmsh.model.mesh.field.add("Min", 3)
     gmsh.model.mesh.field.setNumbers(3, "FieldsList", [1, 2])
     gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
-    # --- 5. BEZPIECZNIK ---
-    # Pozwala algorytmowi wygenerować odpowiednio drobne elementy przejścia
+    # --- 5. SIZE CONSTRAINTS ---
+    # Smallest mesh size on the airfoil and in the boundary layer, largest in the far field.
     gmsh.option.setNumber("Mesh.MeshSizeMin", 0.00001)
     gmsh.option.setNumber("Mesh.MeshSizeMax", lc_far)
 
-    # Zapis grup fizycznych
+    # Saving groups
     farfield_group = gmsh.model.addPhysicalGroup(1, [arc1, arc2, arc3, arc4])
     gmsh.model.setPhysicalName(1, farfield_group, "farfield")
     airfoil_group = gmsh.model.addPhysicalGroup(1, [curve_lower, curve_upper, curve_te])
@@ -98,7 +97,7 @@ def generate_mesh(x_coords, y_coords, config):
 
     gmsh.model.mesh.generate(2)
     
-    # --- 5. RAPORT JAKOŚCI I PODGLĄD (Twój kod) ---
+    # --- 6. QUALITY REPORT AND VISUALIZATION ---
     elem_types, elem_tags, _ = gmsh.model.mesh.getElements(2)
     num_tris = 0
     num_quads = 0
@@ -120,14 +119,14 @@ def generate_mesh(x_coords, y_coords, config):
     
     report_path = os.path.join(config["workspace_dir"], "mesh_report.txt")
     with open(report_path, "w") as f:
-        f.write("--- RAPORT JAKOSCI SIATKI OBLICZENIOWEJ ---\n")
-        f.write(f"Wezly ogolem: {total_nodes}\n")
-        f.write(f"Elementy 2D: {total_2d}\n")
-        f.write(f"  - Trojkaty (tlo): {num_tris}\n")
-        f.write(f"  - Czworokaty (BL): {num_quads}\n\n")
-        f.write("--- METRYKA minSICN ---\n")
+        f.write("--- QUALITY REPORT OF THE COMPUTATIONAL MESH ---\n")
+        f.write(f"Total nodes: {total_nodes}\n")
+        f.write(f"2D elements: {total_2d}\n")
+        f.write(f"  - Triangles (background): {num_tris}\n")
+        f.write(f"  - Quads (boundary layer): {num_quads}\n\n")
+        f.write("--- minSICN METRIC ---\n")
         f.write(f"Minimum minSICN: {sicn_min:.5f}\n")
-        f.write(f"Srednia minSICN: {sicn_avg:.5f}\n")
+        f.write(f"Average minSICN: {sicn_avg:.5f}\n")
 
     try:
         _, node_coords, _ = gmsh.model.mesh.getNodes()
@@ -137,7 +136,7 @@ def generate_mesh(x_coords, y_coords, config):
         plt.xlim(-0.2, 1.2)
         plt.ylim(-0.4, 0.4)
         plt.gca().set_aspect('equal')
-        plt.title('Rozklad gestosci siatki wokol profilu')
+        plt.title('Mesh density distribution')
         plt.savefig(os.path.join(config["workspace_dir"], "mesh_preview_wsl.png"), dpi=300, bbox_inches='tight')
         plt.close()
     except: pass

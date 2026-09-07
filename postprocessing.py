@@ -15,7 +15,7 @@ def plot_polar(config):
         history_file = os.path.join(workspace_dir, run_dir_name, "history.csv")
         
         if not os.path.exists(history_file):
-            print(f"[OSTRZEŻENIE] Brak pliku history.csv dla alfa = {alpha}. Pomijanie.")
+            print(f"[WARNING] No history.csv for alpha = {alpha}. Skipping.")
             continue
             
         with open(history_file, 'r') as csvfile:
@@ -40,28 +40,28 @@ def plot_polar(config):
                 alpha_list.append(alpha)
 
     if not cl_list:
-        print("[BŁĄD] Brak danych do narysowania wykresu.")
+        print("[ERROR] No data available for plotting.")
         return
 
-    # Zapis wynikow aerodynamicznych do pliku CSV.
+    # Writing the tabular data to a CSV file.
     csv_output = os.path.join(workspace_dir, "polar_data.csv")
     with open(csv_output, 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(["Alpha", "Cd", "Cl"])
         for a, cd, cl in zip(alpha_list, cd_list, cl_list):
             writer.writerow([a, cd, cl])
-    print(f"-> Dane tabelaryczne zapisane jako: {csv_output}")
+    print(f"-> Tabular data saved as: {csv_output}")
 
-    # Generowanie i formatowanie wykresu.
+    # Plot creation
     plt.figure(figsize=(8, 6))
     plt.plot(cd_list, cl_list, marker='o', linestyle='-', color='b', label=f'NACA {config["naca_code"]}')
     
     for i, txt in enumerate(alpha_list):
         plt.annotate(f"{txt}°", (cd_list[i], cl_list[i]), textcoords="offset points", xytext=(5,5), ha='left')
 
-    plt.title("Biegunowa profilu (Cl od Cd)")
-    plt.xlabel("Współczynnik oporu (Cd)")
-    plt.ylabel("Współczynnik siły nośnej (Cl)")
+    plt.title("Drag polar of the airfoil (Cl vs. Cd)")
+    plt.xlabel("Drag coefficient (Cd)")
+    plt.ylabel("Lift coefficient (Cl)")
     plt.grid(True, linestyle='--', alpha=0.7)
     
     exp_file = "naca0012_exp.csv"
@@ -74,9 +74,9 @@ def plot_polar(config):
                 exp_cl.append(float(row["CL"]))
                 exp_cd.append(float(row["CD"]))
         
-        plt.plot(exp_cd, exp_cl, 'r--', marker='s', label='Eksperyment (Re=3e6)')
+        plt.plot(exp_cd, exp_cl, 'r--', marker='s', label='Experiment (Re=3e6)')
     
     plt.legend()
     output_plot = os.path.join(workspace_dir, "polar_plot.png")
     plt.savefig(output_plot, dpi=300)
-    print(f"-> Wykres biegunowej został zapisany jako: {output_plot}")
+    print(f"-> Drag polar has been saved as: {output_plot}")
