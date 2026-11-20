@@ -1,0 +1,131 @@
+
+-------------------------------------------------------------------------
+|    ___ _   _ ___                                                      |
+|   / __| | | |_  )   Release 8.5.0 "Harrier"                           |
+|   \__ \ |_| |/ /                                                      |
+|   |___/\___//___|   Suite (Mesh Deformation Code)                     |
+|                                                                       |
+-------------------------------------------------------------------------
+| SU2 Project Website: https://su2code.github.io                        |
+|                                                                       |
+| The SU2 Project is maintained by the SU2 Foundation                   |
+| (http://su2foundation.org)                                            |
+-------------------------------------------------------------------------
+| Copyright 2012-2026, SU2 Contributors                                 |
+|                                                                       |
+| SU2 is free software; you can redistribute it and/or                  |
+| modify it under the terms of the GNU Lesser General Public            |
+| License as published by the Free Software Foundation; either          |
+| version 2.1 of the License, or (at your option) any later version.    |
+|                                                                       |
+| SU2 is distributed in the hope that it will be useful,                |
+| but WITHOUT ANY WARRANTY; without even the implied warranty of        |
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU      |
+| Lesser General Public License for more details.                       |
+|                                                                       |
+| You should have received a copy of the GNU Lesser General Public      |
+| License along with SU2. If not, see <http://www.gnu.org/licenses/>.   |
+-------------------------------------------------------------------------
+
+----------------- Physical Case Definition ( Zone 0 ) -------------------
+Input mesh file name: mesh.su2
+
+---------------- Grid deformation parameters ( Zone 0 )  ----------------
+Grid deformation using linear elasticity method.
+Design variables definition (markers <-> value <-> param):
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 1, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 1, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 2, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 2, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 3, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 3, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 4, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 4, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 5, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 5, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 6, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 6, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 7, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 7, 1, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 8, 0, 0, 1 )
+FFD 2D (control point) <-> airfoil <-> 0 <-> ( MAIN_BOX, 8, 1, 0, 1 )
+
+-------------------- Output Information ( Zone 0 ) ----------------------
+Output mesh file name: mesh_out.su2. 
+Cell stiffness scaled by distance to nearest solid surface.
+
+------------- Config File Boundary Information ( Zone 0 ) ---------------
++-----------------------------------------------------------------------+
+|                        Marker Type|                        Marker Name|
++-----------------------------------------------------------------------+
+|                          Far-field|                           farfield|
++-----------------------------------------------------------------------+
+|                     Heat flux wall|                            airfoil|
++-----------------------------------------------------------------------+
+Two dimensional problem.
+187863 grid points.
+252122 volume elements.
+2 surface markers.
+64 boundary elements in index 0 (Marker = farfield).
+2059 boundary elements in index 1 (Marker = airfoil).
+130641 triangles.
+121481 quadrilaterals.
+
+----------------------- Preprocessing computations ----------------------
+Setting local point connectivity.
+Checking the numerical grid orientation of the interior elements.
+All volume elements are correctly oriented.
+There has been a re-orientation of 19 LINE surface elements.
+Identify edges and vertices.
+Setting the bound control volume structure.
+Area of the computational grid: 705.641.
+  Info: Ignoring the following volume output fields/groups:
+  SOLUTION
+Volume output fields: COORDINATES
+Screen output fields: 
+  Info: Ignoring the following history output groups:
+  RMS_RES, AERO_COEFF
+History output group(s): ITER
+Ignoring Convergence Field(s): RMS_DENSITY 
+Warning: No (valid) fields chosen for convergence monitoring. Convergence monitoring inactive.
+Warning: No (valid) fields chosen for time convergence monitoring. Time convergence monitoring inactive.
+
+--------------------- Surface grid deformation (ZONE 0) -----------------
+Performing the deformation of the surface grid.
+1 Free Form Deformation boxes.
+1 Free Form Deformation nested levels.
+FFD box tag: MAIN_BOX. FFD box level: 0. Degrees: 9, 1.
+FFD Blending using Bezier Curves.
+Number of parent boxes: 0. Number of child boxes: 0.
+Corner points: 4. Control points: 40. Surface points: 2059.
+Writing a Paraview file of the FFD boxes.
+
+----------------- FFD technique (parametric -> cartesian) ---------------
+Checking FFD box dimension.
+Checking FFD box intersections with the solid surfaces.
+SU2 is fixing the planes to maintain a continuous 2nd order derivative.
+Update cartesian coord        | FFD box: MAIN_BOX. Max Diff: 5.55112e-16.
+Writing a Paraview file of the FFD boxes.
+
+------------------- Volumetric grid deformation (ZONE 0) ----------------
+Performing the deformation of the volumetric grid.
+
+Completed in 46.401116 seconds on 1 core.
+
+----------------------- Write deformed grid files -----------------------
+|SU2 mesh                           |mesh_out.su2                       |
+|Paraview                           |volume_deformed.vtu                |
+|CSV file                           |surface_deformed.csv               |
+Adding any FFD information to the SU2 file.
+
+------------------------- Finalize Solver -------------------------
+Deleted CNumerics container.
+Deleted CSolver container.
+Deleted CGeometry container.
+Deleted CSurfaceMovement class.
+Deleted CVolumetricMovement class.
+Deleted CConfig container.
+Deleted COutput class.
+
+------------------------- Exit Success (SU2_DEF) ------------------------
+

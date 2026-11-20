@@ -1,2 +1,9 @@
 workspace/*
+<<<<<<< Updated upstream
 workspace_opt/*
+=======
+workspace_opt/*
+results
+_archive
+tree.txt
+>>>>>>> Stashed changes
