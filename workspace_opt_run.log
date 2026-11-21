@@ -1,0 +1,214 @@
+Uzyto zweryfikowanej siatki bazowej: reference/mesh_base_ffd.su2
+
+Start optymalizacji NLopt (LD_MMA): max(L/D), |CMz|<=0.05, t/t0>=0.9, x in [-0.06, 0.06]
+
+--- Ewaluacja 1 ---
+   -> SU2_DEF (MPI: 1)... (47.8s)
+   -> SU2_CFD (MPI: 4)... (625.5s)
+   Wynik -> CD: 0.009780 (std 3.5e-06) | CL: 0.22561 | L/D: 23.07 | CMz: +0.00017 | t/t0 min: 1.000 | rms[Rho]: -7.65
+   -> SU2_CFD_AD (MPI: 4)... (328.6s)
+   -> SU2_DOT_AD (MPI: 1)... (60.5s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.04, rms[A_k]: -6.59
+   -> SU2_CFD_AD (MPI: 4)... (341.3s)
+   -> SU2_DOT_AD (MPI: 1)... (59.5s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.54
+
+--- Ewaluacja 2 ---
+   -> SU2_DEF (MPI: 1)... (49.7s)
+   -> SU2_CFD (MPI: 4)... (645.5s)
+   Wynik -> CD: 0.009681 (std 3.5e-06) | CL: 0.22830 | L/D: 23.58 | CMz: +0.00061 | t/t0 min: 1.000 | rms[Rho]: -7.69
+   -> SU2_CFD_AD (MPI: 4)... (330.1s)
+   -> SU2_DOT_AD (MPI: 1)... (62.1s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.06, rms[A_k]: -6.56
+   -> SU2_CFD_AD (MPI: 4)... (334.9s)
+   -> SU2_DOT_AD (MPI: 1)... (57.6s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.52
+
+--- Ewaluacja 3 ---
+   -> SU2_DEF (MPI: 1)... (44.4s)
+   -> SU2_CFD (MPI: 4)... (622.3s)
+   Wynik -> CD: 0.009519 (std 4.1e-06) | CL: 0.22564 | L/D: 23.70 | CMz: +0.00009 | t/t0 min: 1.000 | rms[Rho]: -7.67
+   -> SU2_CFD_AD (MPI: 4)... (330.3s)
+   -> SU2_DOT_AD (MPI: 1)... (63.0s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.07, rms[A_k]: -6.58
+   -> SU2_CFD_AD (MPI: 4)... (333.2s)
+   -> SU2_DOT_AD (MPI: 1)... (57.8s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.56
+
+--- Ewaluacja 4 ---
+   -> SU2_DEF (MPI: 1)... (44.6s)
+   -> SU2_CFD (MPI: 4)... (621.5s)
+   Wynik -> CD: 0.009377 (std 2.7e-06) | CL: 0.22380 | L/D: 23.87 | CMz: -0.00026 | t/t0 min: 1.000 | rms[Rho]: -7.91
+   -> SU2_CFD_AD (MPI: 4)... (330.0s)
+   -> SU2_DOT_AD (MPI: 1)... (61.8s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.08, rms[A_k]: -6.58
+   -> SU2_CFD_AD (MPI: 4)... (328.6s)
+   -> SU2_DOT_AD (MPI: 1)... (59.2s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.59
+
+--- Ewaluacja 5 ---
+   -> SU2_DEF (MPI: 1)... (45.9s)
+   -> SU2_CFD (MPI: 4)... (622.4s)
+   Wynik -> CD: 0.009295 (std 1.4e-06) | CL: 0.22261 | L/D: 23.95 | CMz: -0.00048 | t/t0 min: 1.000 | rms[Rho]: -8.11
+   -> SU2_CFD_AD (MPI: 4)... (334.3s)
+   -> SU2_DOT_AD (MPI: 1)... (61.5s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.08, rms[A_k]: -6.58
+   -> SU2_CFD_AD (MPI: 4)... (330.7s)
+   -> SU2_DOT_AD (MPI: 1)... (59.8s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.60
+
+--- Ewaluacja 6 ---
+   -> SU2_DEF (MPI: 1)... (47.1s)
+   -> SU2_CFD (MPI: 4)... (618.8s)
+   Wynik -> CD: 0.009244 (std 6.0e-07) | CL: 0.22241 | L/D: 24.06 | CMz: -0.00052 | t/t0 min: 1.000 | rms[Rho]: -8.27
+   -> SU2_CFD_AD (MPI: 4)... (330.2s)
+   -> SU2_DOT_AD (MPI: 1)... (62.8s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.09, rms[A_k]: -6.58
+   -> SU2_CFD_AD (MPI: 4)... (329.6s)
+   -> SU2_DOT_AD (MPI: 1)... (60.6s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.61
+
+--- Ewaluacja 7 ---
+   -> SU2_DEF (MPI: 1)... (46.9s)
+   -> SU2_CFD (MPI: 4)... (629.8s)
+   Wynik -> CD: 0.009228 (std 2.8e-06) | CL: 0.22821 | L/D: 24.73 | CMz: +0.00054 | t/t0 min: 1.000 | rms[Rho]: -8.35
+   -> SU2_CFD_AD (MPI: 4)... (326.6s)
+   -> SU2_DOT_AD (MPI: 1)... (63.4s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.11, rms[A_k]: -6.57
+   -> SU2_CFD_AD (MPI: 4)... (333.6s)
+   -> SU2_DOT_AD (MPI: 1)... (61.2s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.62
+
+--- Ewaluacja 8 ---
+   -> SU2_DEF (MPI: 1)... (45.1s)
+   -> SU2_CFD (MPI: 4)... (620.5s)
+   Wynik -> CD: 0.009284 (std 9.8e-06) | CL: 0.25377 | L/D: 27.33 | CMz: +0.00516 | t/t0 min: 1.000 | rms[Rho]: -8.02
+   -> SU2_CFD_AD (MPI: 4)... (328.7s)
+   -> SU2_DOT_AD (MPI: 1)... (64.0s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.18, rms[A_k]: -6.53
+   -> SU2_CFD_AD (MPI: 4)... (331.7s)
+   -> SU2_DOT_AD (MPI: 1)... (62.0s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.62
+
+--- Ewaluacja 9 ---
+   -> SU2_DEF (MPI: 1)... (44.0s)
+   -> SU2_CFD (MPI: 4)... (622.8s)
+   Wynik -> CD: 0.009540 (std 2.3e-05) | CL: 0.32693 | L/D: 34.27 | CMz: +0.01625 | t/t0 min: 1.000 | rms[Rho]: -7.49
+   -> SU2_CFD_AD (MPI: 4)... (327.4s)
+   -> SU2_DOT_AD (MPI: 1)... (64.2s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.33, rms[A_k]: -6.51
+   -> SU2_CFD_AD (MPI: 4)... (331.8s)
+   -> SU2_DOT_AD (MPI: 1)... (62.4s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.61
+
+--- Ewaluacja 10 ---
+   -> SU2_DEF (MPI: 1)... (44.6s)
+   -> SU2_CFD (MPI: 4)... (632.0s)
+   Wynik -> CD: 0.009887 (std 2.5e-05) | CL: 0.41536 | L/D: 42.01 | CMz: +0.02502 | t/t0 min: 0.999 | rms[Rho]: -7.31
+   -> SU2_CFD_AD (MPI: 4)... (329.5s)
+   -> SU2_DOT_AD (MPI: 1)... (66.5s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.48, rms[A_k]: -6.58
+   -> SU2_CFD_AD (MPI: 4)... (335.8s)
+   -> SU2_DOT_AD (MPI: 1)... (62.4s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.58
+
+--- Ewaluacja 11 ---
+   -> SU2_DEF (MPI: 1)... (46.1s)
+   -> SU2_CFD (MPI: 4)... (628.5s)
+   Wynik -> CD: 0.010369 (std 3.1e-05) | CL: 0.50977 | L/D: 49.16 | CMz: +0.03232 | t/t0 min: 0.999 | rms[Rho]: -7.26
+   -> SU2_CFD_AD (MPI: 4)... (332.5s)
+   -> SU2_DOT_AD (MPI: 1)... (67.0s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.66, rms[A_k]: -6.68
+   -> SU2_CFD_AD (MPI: 4)... (333.1s)
+   -> SU2_DOT_AD (MPI: 1)... (62.4s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.56
+
+--- Ewaluacja 12 ---
+   -> SU2_DEF (MPI: 1)... (46.1s)
+   -> SU2_CFD (MPI: 4)... (620.0s)
+   Wynik -> CD: 0.010938 (std 3.6e-05) | CL: 0.60655 | L/D: 55.45 | CMz: +0.03694 | t/t0 min: 0.997 | rms[Rho]: -7.18
+   -> SU2_CFD_AD (MPI: 4)... (331.0s)
+   -> SU2_DOT_AD (MPI: 1)... (67.7s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.87, rms[A_k]: -6.74
+   -> SU2_CFD_AD (MPI: 4)... (331.2s)
+   -> SU2_DOT_AD (MPI: 1)... (62.7s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.53
+
+--- Ewaluacja 13 ---
+   -> SU2_DEF (MPI: 1)... (47.7s)
+   -> SU2_CFD (MPI: 4)... (628.3s)
+   Wynik -> CD: 0.011626 (std 4.1e-05) | CL: 0.70648 | L/D: 60.77 | CMz: +0.03898 | t/t0 min: 0.995 | rms[Rho]: -7.25
+   -> SU2_CFD_AD (MPI: 4)... (330.9s)
+   -> SU2_DOT_AD (MPI: 1)... (67.8s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -6.05, rms[A_k]: -6.84
+   -> SU2_CFD_AD (MPI: 4)... (329.9s)
+   -> SU2_DOT_AD (MPI: 1)... (64.5s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.51
+
+--- Ewaluacja 14 ---
+   -> SU2_DEF (MPI: 1)... (48.1s)
+   -> SU2_CFD (MPI: 4)... (626.0s)
+   Wynik -> CD: 0.012405 (std 4.6e-05) | CL: 0.79215 | L/D: 63.86 | CMz: +0.04398 | t/t0 min: 0.992 | rms[Rho]: -7.21
+   -> SU2_CFD_AD (MPI: 4)... (331.8s)
+   -> SU2_DOT_AD (MPI: 1)... (67.0s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -6.01, rms[A_k]: -6.99
+   -> SU2_CFD_AD (MPI: 4)... (329.6s)
+   -> SU2_DOT_AD (MPI: 1)... (64.6s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.50
+
+--- Ewaluacja 15 ---
+   -> SU2_DEF (MPI: 1)... (47.4s)
+   -> SU2_CFD (MPI: 4)... (626.0s)
+   Wynik -> CD: 0.012454 (std 3.2e-05) | CL: 0.80446 | L/D: 64.60 | CMz: +0.04825 | t/t0 min: 0.986 | rms[Rho]: -7.84
+   -> SU2_CFD_AD (MPI: 4)... (329.2s)
+   -> SU2_DOT_AD (MPI: 1)... (67.4s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.94, rms[A_k]: -7.24
+   -> SU2_CFD_AD (MPI: 4)... (332.1s)
+   -> SU2_DOT_AD (MPI: 1)... (64.3s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.51
+
+--- Ewaluacja 16 ---
+   -> SU2_DEF (MPI: 1)... (47.4s)
+   -> SU2_CFD (MPI: 4)... (625.2s)
+   Wynik -> CD: 0.012232 (std 1.3e-05) | CL: 0.80591 | L/D: 65.88 | CMz: +0.04848 | t/t0 min: 0.977 | rms[Rho]: -8.16
+   -> SU2_CFD_AD (MPI: 4)... (331.5s)
+   -> SU2_DOT_AD (MPI: 1)... (67.2s)
+   Adjoint(CD/CL) -> rms[A_Rho]: -5.92, rms[A_k]: -7.24
+   -> SU2_CFD_AD (MPI: 4)... (333.3s)
+   -> SU2_DOT_AD (MPI: 1)... (64.6s)
+   Adjoint(CMz)   -> rms[A_Rho]: -5.48
+
+--- Zakonczono optymalizacje (min CD/CL: 0.01518) ---
+
+=== WERYFIKACJA KONCOWA (INNER_ITER=3500, iteracje=[1, 16]) ===
+   -> SU2_DEF (MPI: 1)... (47.7s)
+   -> SU2_CFD (MPI: 4)... (1821.0s)
+
+-- Weryfikacja it1 (n=3500, rms[Rho]=-7.64) --
+      0- 500: CD=0.009931 (std 2.7e-05) | CL=0.22091 | L/D=22.24
+    500-1000: CD=0.009839 (std 2.5e-05) | CL=0.22357 | L/D=22.72
+   1000-1500: CD=0.009771 (std 1.4e-05) | CL=0.22605 | L/D=23.13
+   1500-2000: CD=0.009736 (std 7.7e-06) | CL=0.22804 | L/D=23.42
+   2000-2500: CD=0.009697 (std 1.7e-05) | CL=0.22842 | L/D=23.56
+   2500-3000: CD=0.009635 (std 1.8e-05) | CL=0.22733 | L/D=23.59
+   3000-3500: CD=0.009571 (std 1.9e-05) | CL=0.22622 | L/D=23.64
+   -> SU2_DEF (MPI: 1)... (47.6s)
+   -> SU2_CFD (MPI: 4)... (1813.5s)
+
+-- Weryfikacja it16 (n=3500, rms[Rho]=-7.35) --
+      0- 500: CD=0.035004 (std 6.8e-02) | CL=0.80525 | L/D=23.00
+    500-1000: CD=0.016697 (std 3.4e-03) | CL=0.80749 | L/D=48.36
+   1000-1500: CD=0.013788 (std 6.0e-04) | CL=0.79356 | L/D=57.55
+   1500-2000: CD=0.014197 (std 4.0e-04) | CL=0.80033 | L/D=56.37
+   2000-2500: CD=0.014366 (std 2.3e-04) | CL=0.82563 | L/D=57.47
+   2500-3000: CD=0.013680 (std 1.3e-04) | CL=0.83177 | L/D=60.80
+   3000-3500: CD=0.013264 (std 1.1e-04) | CL=0.82896 | L/D=62.50
+
+--- Podsumowanie weryfikacji ---
+ iter       cd       cl      cmz        ld  cd_std_300   rms_rho     rms_w  max_thick   max_camber      te_y
+    1 0.009558 0.226033 0.000169 23.649092    0.000012 -7.644283 -0.871246   0.120034 2.163027e-13 -0.000104
+   16 0.013186 0.828139 0.052854 62.803715    0.000068 -7.353866 -0.573374   0.118722 5.276043e-02 -0.017275
+-> Wygenerowano workspace_opt/executive_summary.png
+-> Wygenerowano workspace_opt/cp_comparison.png
+-> Wygenerowano animacje: workspace_opt/airfoil_evolution.gif
+Czas calkowity: 7:31:55
