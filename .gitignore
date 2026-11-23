@@ -13,3 +13,5 @@ workspace_fd/*
 *.fls
 *.out
 *.fdb*
+ref_check
+report_figures
