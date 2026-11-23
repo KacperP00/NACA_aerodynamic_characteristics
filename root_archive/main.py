@@ -5,8 +5,8 @@ import numpy as np
 import shutil
 from geometry import generate_naca4
 from meshing import generate_mesh
-from simulation_parallel import run_su2_cases
-from postprocessing import plot_polar
+from root_archive.simulation_parallel import run_su2_cases
+from root_archive.postprocessing import plot_polar
 
 def main():
     start_time = time.time() # Time initialization for performance measurement
