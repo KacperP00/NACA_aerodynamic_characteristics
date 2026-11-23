@@ -8,3 +8,8 @@ _archive
 tree.txt
 workspace_fd/*
 >>>>>>> Stashed changes
+*.aux
+*.log
+*.fls
+*.out
+*.fdb*

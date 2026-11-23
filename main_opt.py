@@ -3,7 +3,6 @@ import datetime
 import glob
 import math
 import os
-import re
 import shutil
 import subprocess
 import time
@@ -21,7 +20,7 @@ THICK_STATIONS = np.linspace(0.10, 0.90, 9)
 
 
 def build_ffd_definition():
-    # Definicja klatki FFD uzywana przy generowaniu siatki bazowej
+    # Definicja klatki FFD do osadzenia w siatce bazowej
     ffd_def = (
         "FFD_DEFINITION= (MAIN_BOX, -0.1, -0.2, 0.0, 1.1, -0.2, 0.0, "
         "1.1, 0.2, 0.0, -0.1, 0.2, 0.0)\n"
@@ -31,7 +30,7 @@ def build_ffd_definition():
 
 
 def build_dv_ffd_setting():
-    # Dyrektywa osadzajaca klatke FFD w pliku siatki .su2
+    # Dyrektywa osadzajaca klatke FFD w pliku .su2
     return (
         "DV_KIND= FFD_SETTING\n"
         "DV_MARKER= ( airfoil )\n"
@@ -41,7 +40,7 @@ def build_dv_ffd_setting():
 
 
 def build_dv_definition():
-    # Skladnia wektorow zmiennych FFD zgodna z parserem SU2 8.5.0
+    # Definicja 16 zmiennych FFD zgodna z parserem SU2 8.5.0
     dv_kind = ["FFD_CONTROL_POINT_2D"] * N_VARS
     dv_param = []
     for i in range(1, FFD_DEGREE_I):
@@ -82,10 +81,10 @@ def read_ffd_bounds(mesh_path):
 
 
 def build_thickness_matrix(stations, ffd_bounds):
-    # Macierz Bernsteina A: delta_t(s)/t0(s) = A @ x dla ruchu pionowego FFD
+    # Macierz Bernsteina: delta_t(s)/t0(s) = A @ x dla pionowego ruchu FFD
     x_min, x_max, y_min, y_max = ffd_bounds
-    dy_box = y_max - y_min
     dx_box = x_max - x_min
+    dy_box = y_max - y_min
     mat = np.zeros((len(stations), N_VARS))
     for row, xc in enumerate(stations):
         u = np.clip((xc - x_min) / dx_box, 0.0, 1.0)
@@ -98,8 +97,26 @@ def build_thickness_matrix(stations, ffd_bounds):
     return mat
 
 
+def build_edge_pin_matrix(ffd_bounds):
+    # Macierz Bernsteina dla pionowego przemieszczenia LE (0,0) i TE (1,0)
+    x_min, x_max, y_min, y_max = ffd_bounds
+    dx_box = x_max - x_min
+    dy_box = y_max - y_min
+    mat = np.zeros((2, N_VARS))
+    for row, (xp, yp) in enumerate([(0.0, 0.0), (1.0, 0.0)]):
+        u = np.clip((xp - x_min) / dx_box, 0.0, 1.0)
+        v = np.clip((yp - y_min) / dy_box, 0.0, 1.0)
+        for i in range(1, FFD_DEGREE_I):
+            b_i = math.comb(FFD_DEGREE_I, i) * (u ** i) * ((1.0 - u) ** (FFD_DEGREE_I - i))
+            idx_lo = 2 * (i - 1)
+            idx_hi = idx_lo + 1
+            mat[row, idx_lo] = b_i * (1.0 - v)
+            mat[row, idx_hi] = b_i * v
+    return mat
+
+
 def measure_surface_geometry(csv_path, stations=THICK_STATIONS):
-    # Pomiar grubosci i linii szkieletowej profilu ze wspolrzednych powierzchni
+    # Pomiar grubosci, linii szkieletowej oraz polozenia LE i TE
     s = pd.read_csv(csv_path)
     s.columns = [c.strip().strip('"') for c in s.columns]
     x = s["x"].values if "x" in s.columns else s["PointX"].values
@@ -120,13 +137,12 @@ def measure_surface_geometry(csv_path, stations=THICK_STATIONS):
     yl = np.interp(stations, lx[l_ord], ly[l_ord])
     thick = yu - yl
     camber = 0.5 * (yu + yl)
-    return thick, camber, float(y[i_te])
+    return thick, camber, float(y[i_le]), float(y[i_te])
 
 
 def clean_adjoint_files(cwd):
     # Usuwa pozostalosci poprzednich przebiegow adjointowych
-    patterns = ["restart_adj*.dat", "solution_adj*.dat", "of_grad", "of_grad.csv"]
-    for pat in patterns:
+    for pat in ("restart_adj*.dat", "solution_adj*.dat", "of_grad", "of_grad.csv"):
         for p in glob.glob(os.path.join(cwd, pat)):
             os.remove(p)
 
@@ -161,7 +177,7 @@ def read_cfd_metrics(history_path, avg_window=100):
     n = len(df)
     w = min(avg_window, max(1, n // 5))
     tail = df.iloc[-w:]
-    metrics = {
+    return {
         "iters_run": n,
         "cd": float(tail["CD"].mean()),
         "cl": float(tail["CL"].mean()),
@@ -172,11 +188,10 @@ def read_cfd_metrics(history_path, avg_window=100):
         "rms_rho_last": float(df["rms[Rho]"].iloc[-1]),
         "rms_w_last": float(df["rms[w]"].iloc[-1]) if "rms[w]" in df.columns else np.nan,
     }
-    return metrics
 
 
 def read_adj_residuals(history_path):
-    # Odczyt koncowych residuow adjointu z history.csv
+    # Odczyt koncowych residuow adjointu
     if not os.path.exists(history_path):
         return np.nan, np.nan
     df = pd.read_csv(history_path)
@@ -187,7 +202,7 @@ def read_adj_residuals(history_path):
 
 
 def assert_ffd_applied(cwd, x, log_name="SU2_DEF.log"):
-    # Sprawdza, czy SU2_DEF faktycznie wykonal deformacje FFD dla niezerowego x
+    # Weryfikacja, czy SU2_DEF wykonal deformacje FFD dla niezerowego x
     if np.linalg.norm(x) <= 1e-12:
         return
     log_path = os.path.join(cwd, log_name)
@@ -197,7 +212,7 @@ def assert_ffd_applied(cwd, x, log_name="SU2_DEF.log"):
 
 
 def run_su2_module(module, cwd, cores=1, log_name=None):
-    # Uruchomienie binarki SU2 przez OpenMPI z bezpiecznym srodowiskiem
+    # Uruchomienie modulu SU2 przez OpenMPI ze stalymi zmiennymi srodowiska
     log_file = log_name or f"{module}.log"
     print(f"   -> {module} (MPI: {cores})... ", end="", flush=True)
     t0 = time.time()
@@ -211,13 +226,9 @@ def run_su2_module(module, cwd, cores=1, log_name=None):
     dt = time.time() - t0
 
     log_path = os.path.join(cwd, log_file)
-    log_text = ""
-    if os.path.exists(log_path):
-        with open(log_path, "r") as f:
-            log_text = f.read()
+    log_text = open(log_path).read() if os.path.exists(log_path) else ""
 
     if res.returncode != 0:
-        # Obejscie bledu destruktora C++ (Signal 6) wystepujacego po zapisie plikow
         if "Finalize Solver" in log_text or "Exit Success" in log_text:
             print(f"({dt:.1f}s) [zignorowano blad zamykania]")
             return
@@ -239,8 +250,7 @@ def prepare_config(module, x, cfg, work_dir):
         "CFL_NUMBER", "CFL_ADAPT", "SLOPE_LIMITER_FLOW", "FROZEN_LIMITER_DISC",
         "FREESTREAM_TURBULENCEINTENSITY", "FREESTREAM_TURB2LAMVISCRATIO",
     )
-    clean_lines = [l for l in tpl_lines if not l.strip().startswith(strip_prefixes)]
-    tpl = "".join(clean_lines)
+    tpl = "".join(l for l in tpl_lines if not l.strip().startswith(strip_prefixes))
 
     tpl = tpl.replace("%MACH%", str(cfg["mach"]))
     tpl = tpl.replace("%AOA%", str(cfg["aoa"]))
@@ -275,6 +285,7 @@ def prepare_config(module, x, cfg, work_dir):
         ]
 
     elif module == "SU2_DEF":
+        # Brak DEFORM_MESH/MARKER_DEFORM_MESH wymusza parametryczna deformacje FFD
         lines += [
             "MATH_PROBLEM= DIRECT",
             "INNER_ITER= 1",
@@ -305,7 +316,6 @@ def prepare_config(module, x, cfg, work_dir):
         ]
 
     elif module == "SU2_CFD_AD":
-        obj_fn = cfg["adj_objective"]
         lines += [
             "MATH_PROBLEM= DISCRETE_ADJOINT",
             "DEFORM_MESH= NO",
@@ -315,14 +325,13 @@ def prepare_config(module, x, cfg, work_dir):
             f"CFL_NUMBER= {cfg.get('adj_cfl', 50.0)}",
             "CFL_ADAPT= NO",
             "FROZEN_LIMITER_DISC= YES",
-            f"OBJECTIVE_FUNCTION= {obj_fn}",
+            f"OBJECTIVE_FUNCTION= {cfg['adj_objective']}",
         ]
-        if "adj_weights" in cfg and cfg["adj_weights"] is not None:
+        if cfg.get("adj_weights") is not None:
             w_str = ", ".join(f"{w:.8f}" for w in cfg["adj_weights"])
             lines.append(f"OBJECTIVE_WEIGHT= {w_str}")
 
     elif module == "SU2_DOT_AD":
-        obj_fn = cfg["adj_objective"]
         lines += [
             "MATH_PROBLEM= DISCRETE_ADJOINT",
             "DEFORM_MESH= YES",
@@ -337,11 +346,11 @@ def prepare_config(module, x, cfg, work_dir):
             "DEFORM_LINEAR_SOLVER_ITER= 1000",
             "DEFORM_NONLINEAR_ITER= 1",
             "DEFORM_STIFFNESS_TYPE= WALL_DISTANCE",
-            f"OBJECTIVE_FUNCTION= {obj_fn}",
+            f"OBJECTIVE_FUNCTION= {cfg['adj_objective']}",
             build_dv_definition().rstrip(),
             build_dv_value(x).rstrip(),
         ]
-        if "adj_weights" in cfg and cfg["adj_weights"] is not None:
+        if cfg.get("adj_weights") is not None:
             w_str = ", ".join(f"{w:.8f}" for w in cfg["adj_weights"])
             lines.append(f"OBJECTIVE_WEIGHT= {w_str}")
 
@@ -374,7 +383,7 @@ def ensure_base_mesh(cfg, wk_dir, remesh=False):
 
 
 def run_adjoint_pair(x, cfg, wk_dir, objective_str, weights, cores, tag):
-    # Oblicza pojedynczy gradient (SU2_CFD_AD + SU2_DOT_AD) dla zadanego celu
+    # Obliczenie gradientu (SU2_CFD_AD + SU2_DOT_AD) dla wskazanego celu
     clean_adjoint_files(wk_dir)
     ad_cfg = dict(cfg, adj_objective=objective_str, adj_weights=weights)
 
@@ -389,7 +398,6 @@ def run_adjoint_pair(x, cfg, wk_dir, objective_str, weights, cores, tag):
         dst_name = os.path.basename(src).replace("restart_adj", "solution_adj")
         shutil.copy(src, os.path.join(wk_dir, dst_name))
 
-    # SU2_DOT_AD rzutuje wrazliwosc na klatke FFD zapisana w siatce bazowej
     dot_cfg = dict(ad_cfg, mesh_filename="mesh_base.su2")
     prepare_config("SU2_DOT_AD", x, dot_cfg, wk_dir)
     run_su2_module("SU2_DOT_AD", wk_dir, cores=1, log_name=f"SU2_DOT_AD_{tag}.log")
@@ -398,25 +406,30 @@ def run_adjoint_pair(x, cfg, wk_dir, objective_str, weights, cores, tag):
 
 
 class AirfoilEvaluator:
-    # Cache ewaluacji dla wspoldzielenia CFD miedzy funkcja celu i ograniczeniami NLopt
-    def __init__(self, cfg, wk_dir, hist_dir, cores, cmz_max, min_thick_ratio, ffd_bounds):
+    # Wspolny cache ewaluacji dla funkcji celu i ograniczen NLopt
+    def __init__(self, cfg, wk_dir, hist_dir, cores, cmz_max, min_thick_ratio, edge_tol, ffd_bounds, init_restart):
         self.cfg = cfg
         self.wk_dir = wk_dir
         self.hist_dir = hist_dir
         self.cores = cores
         self.cmz_max = cmz_max
         self.min_thick_ratio = min_thick_ratio
+        self.edge_tol = edge_tol
         self.thick_mat = build_thickness_matrix(THICK_STATIONS, ffd_bounds)
+        self.edge_mat = build_edge_pin_matrix(ffd_bounds)
 
         self.iter_count = 0
         self.last_x = None
         self.state = None
         self.base_thick = None
+        self.base_le_y = None
+        self.base_te_y = None
         self.last_good_restart = os.path.join(wk_dir, "last_good_flow.dat")
         self.history = []
 
-        if os.path.exists("reference/restart_flow.dat"):
-            shutil.copy("reference/restart_flow.dat", self.last_good_restart)
+        if init_restart and os.path.exists(init_restart):
+            shutil.copy(init_restart, self.last_good_restart)
+            print(f"Inicjalizacja pola przeplywu z: {init_restart}")
 
     def _ensure_primal(self, x):
         if self.last_x is not None and np.array_equal(x, self.last_x):
@@ -427,13 +440,11 @@ class AirfoilEvaluator:
         mesh_path = os.path.join(self.wk_dir, self.cfg["mesh_filename"])
         shutil.copy(os.path.join(self.wk_dir, "mesh_base.su2"), mesh_path)
 
-        # Deformacja siatki na 1 rdzeniu
         prepare_config("SU2_DEF", x, self.cfg, self.wk_dir)
         run_su2_module("SU2_DEF", self.wk_dir, cores=1)
         assert_ffd_applied(self.wk_dir, x)
         shutil.move(os.path.join(self.wk_dir, "mesh_out.su2"), mesh_path)
 
-        # Warm-start z poprzedniej zbieglej iteracji (lub ze stanu referencyjnego)
         use_restart = os.path.exists(self.last_good_restart)
         if use_restart:
             shutil.copy(self.last_good_restart, os.path.join(self.wk_dir, "solution_flow.dat"))
@@ -455,17 +466,26 @@ class AirfoilEvaluator:
         shutil.copy(surf_src, surf_dst)
         np.save(os.path.join(self.hist_dir, f"x_{self.iter_count:03d}.npy"), x)
 
-        thick, camber, te_y = measure_surface_geometry(surf_src)
+        thick, camber, le_y, te_y = measure_surface_geometry(surf_src)
         if self.base_thick is None:
             self.base_thick = thick.copy()
+            self.base_le_y = le_y
+            self.base_te_y = te_y
+
+        dle_y = le_y - self.base_le_y
+        dte_y = te_y - self.base_te_y
+        d_alpha_deg = math.degrees(math.atan2(dle_y - dte_y, 1.0))
         actual_min_ratio = float(np.min(thick / self.base_thick))
         max_camber = float(np.max(np.abs(camber)))
 
         ld = m["cl"] / m["cd"]
         obj = m["cd"] / m["cl"]
-        feasible = (abs(m["cmz"]) <= self.cmz_max + 1e-4) and (
-            actual_min_ratio >= self.min_thick_ratio - 1e-3
+        ok_cmz = (self.cmz_max <= 0) or (abs(m["cmz"]) <= self.cmz_max + 2e-4)
+        ok_thick = (self.min_thick_ratio <= 0) or (actual_min_ratio >= self.min_thick_ratio - 1e-3)
+        ok_edge = (self.edge_tol <= 0) or (
+            abs(dle_y) <= self.edge_tol + 2e-4 and abs(dte_y) <= self.edge_tol + 2e-4
         )
+        feasible = ok_cmz and ok_thick and ok_edge
 
         self.last_x = x.copy()
         self.state = {
@@ -480,7 +500,9 @@ class AirfoilEvaluator:
             "rms_w": m["rms_w_last"],
             "min_thick_ratio": actual_min_ratio,
             "max_camber": max_camber,
+            "le_y": le_y,
             "te_y": te_y,
+            "d_alpha_deg": d_alpha_deg,
             "feasible": int(feasible),
             "rms_a_rho_obj": np.nan,
             "rms_a_k_obj": np.nan,
@@ -493,15 +515,15 @@ class AirfoilEvaluator:
 
         print(
             f"   Wynik -> CD: {m['cd']:.6f} (std {m['cd_std']:.1e}) | CL: {m['cl']:.5f} | "
-            f"L/D: {ld:.2f} | CMz: {m['cmz']:+.5f} | t/t0 min: {actual_min_ratio:.3f} | "
-            f"rms[Rho]: {m['rms_rho_last']:.2f}"
+            f"L/D: {ld:.2f} | CMz: {m['cmz']:+.5f} | t/t0: {actual_min_ratio:.3f} | "
+            f"dAoA: {d_alpha_deg:+.3f} deg | rms[Rho]: {m['rms_rho_last']:.2f}"
         )
 
     def _save_metrics(self):
-        # Zapis historii metryk na biezaco po kazdej ewaluacji
+        # Biezacy zapis historii metryk po kazdej ewaluacji
         keys = [
             "iter", "cd", "cl", "cmz", "ld", "obj", "cd_std", "rms_rho", "rms_w",
-            "min_thick_ratio", "max_camber", "te_y", "feasible",
+            "min_thick_ratio", "max_camber", "le_y", "te_y", "d_alpha_deg", "feasible",
             "rms_a_rho_obj", "rms_a_k_obj", "rms_a_rho_cmz",
         ]
         rows = [{k: row[k] for k in keys} for row in self.history]
@@ -551,14 +573,27 @@ class AirfoilEvaluator:
         return -self.state["cmz"] - self.cmz_max
 
     def thickness_constraints(self, result, x, grad):
-        # Liniowe ograniczenia FFD: (min_thick_ratio - 1) - (A @ x) <= 0
+        # Liniowe ograniczenia grubosci: (min_thick_ratio - 1) - (A @ x) <= 0
         result[:] = (self.min_thick_ratio - 1.0) - (self.thick_mat @ x)
         if grad.size > 0:
             grad[:, :] = -self.thick_mat
 
+    def edge_pin_constraints(self, result, x, grad):
+        # Liniowe kotwiczenie LE i TE: |dy_LE| <= edge_tol, |dy_TE| <= edge_tol
+        dy = self.edge_mat @ x
+        result[0] = dy[0] - self.edge_tol
+        result[1] = -dy[0] - self.edge_tol
+        result[2] = dy[1] - self.edge_tol
+        result[3] = -dy[1] - self.edge_tol
+        if grad.size > 0:
+            grad[0, :] = self.edge_mat[0]
+            grad[1, :] = -self.edge_mat[0]
+            grad[2, :] = self.edge_mat[1]
+            grad[3, :] = -self.edge_mat[1]
+
 
 def run_fd_check(cfg, args):
-    # Weryfikacja gradientow adjointowych (CD/CL i CMz) roznicami skonczonymi centralnymi
+    # Weryfikacja gradientow adjointowych roznicami skonczonymi centralnymi
     wk_dir = args.work_dir
     if os.path.exists(wk_dir):
         shutil.rmtree(wk_dir)
@@ -579,16 +614,16 @@ def run_fd_check(cfg, args):
         shutil.copy(mesh_base, os.path.join(sub, cfg["mesh_filename"]))
         prepare_config("SU2_DEF", x_vec, cfg, sub)
         run_su2_module("SU2_DEF", sub, cores=1)
-        assert_ffd_applied(sub, x_vec if "x_vec" in locals() else x)
+        assert_ffd_applied(sub, x_vec)
         shutil.move(os.path.join(sub, "mesh_out.su2"), os.path.join(sub, cfg["mesh_filename"]))
 
-        use_rst = os.path.exists("reference/restart_flow.dat")
+        use_rst = bool(args.init_restart and os.path.exists(args.init_restart))
         if use_rst:
-            shutil.copy("reference/restart_flow.dat", os.path.join(sub, "solution_flow.dat"))
+            shutil.copy(args.init_restart, os.path.join(sub, "solution_flow.dat"))
         prepare_config("SU2_CFD", x_vec, dict(cfg, restart=use_rst, iters=cfg["cfd_iters"]), sub)
         run_su2_module("SU2_CFD", sub, cores=args.cores)
         m = read_cfd_metrics(os.path.join(sub, "history.csv"))
-        thick, _, _ = measure_surface_geometry(os.path.join(sub, "surface_flow.csv"))
+        thick, _, _, _ = measure_surface_geometry(os.path.join(sub, "surface_flow.csv"))
         return m, thick, sub
 
     print(f"\n=== FD-CHECK (step={step:.1e}, cfd_iters={cfg['cfd_iters']}, adj_iters={cfg['adj_iters']}) ===")
@@ -601,8 +636,7 @@ def run_fd_check(cfg, args):
 
     rows = []
     for k in var_indices:
-        xp = x0.copy()
-        xm = x0.copy()
+        xp, xm = x0.copy(), x0.copy()
         xp[k] += step
         xm[k] -= step
         mp, tp, _ = eval_single(xp, f"v{k}_p")
@@ -613,15 +647,12 @@ def run_fd_check(cfg, args):
         rel_obj = 100.0 * abs(g_obj[k] - fd_obj) / (abs(fd_obj) + 1e-12)
         rel_cmz = 100.0 * abs(g_cmz[k] - fd_cmz) / (abs(fd_cmz) + 1e-12)
 
-        # Sprawdzenie zgodnosci analitycznego modelu grubosci (x/c = 0.50 -> indeks 4)
         fd_dt_rel = ((tp[4] - tm[4]) / t0[4]) / (2.0 * step)
-        ana_dt_rel = thick_mat[4, k]
-
         rows.append({
             "var": k,
             "adj_obj": g_obj[k], "fd_obj": fd_obj, "err_obj_%": rel_obj,
             "adj_cmz": g_cmz[k], "fd_cmz": fd_cmz, "err_cmz_%": rel_cmz,
-            "ana_dt50": ana_dt_rel, "fd_dt50": fd_dt_rel,
+            "ana_dt50": thick_mat[4, k], "fd_dt50": fd_dt_rel,
         })
 
     df = pd.DataFrame(rows)
@@ -630,8 +661,8 @@ def run_fd_check(cfg, args):
     df.to_csv(os.path.join(wk_dir, "fd_check_results.csv"), index=False)
 
 
-def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores):
-    # Niezalezna weryfikacja CFD dla wybranych iteracji z historii optymalizacji
+def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores, init_restart):
+    # Niezalezna weryfikacja CFD dla wybranych iteracji
     hist_dir = os.path.join(wk_dir, "optimization_history")
     mesh_base = os.path.join(wk_dir, "mesh_base.su2")
     if not os.path.exists(mesh_base):
@@ -640,6 +671,7 @@ def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores):
     ver_root = os.path.join(wk_dir, "verification")
     os.makedirs(ver_root, exist_ok=True)
     summary = []
+    base_le_y, base_te_y = None, None
 
     print(f"\n=== WERYFIKACJA KONCOWA (INNER_ITER={verify_iters}, iteracje={iters_to_check}) ===")
     for it in iters_to_check:
@@ -654,12 +686,12 @@ def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores):
 
         prepare_config("SU2_DEF", x, cfg, sub)
         run_su2_module("SU2_DEF", sub, cores=1)
-        assert_ffd_applied(sub, x_vec if "x_vec" in locals() else x)
+        assert_ffd_applied(sub, x)
         shutil.move(os.path.join(sub, "mesh_out.su2"), os.path.join(sub, cfg["mesh_filename"]))
 
-        use_rst = os.path.exists("reference/restart_flow.dat")
+        use_rst = bool(init_restart and os.path.exists(init_restart))
         if use_rst:
-            shutil.copy("reference/restart_flow.dat", os.path.join(sub, "solution_flow.dat"))
+            shutil.copy(init_restart, os.path.join(sub, "solution_flow.dat"))
 
         ver_cfg = dict(cfg, restart=use_rst, iters=verify_iters, conv_minval=-14)
         prepare_config("SU2_CFD", x, ver_cfg, sub)
@@ -674,7 +706,11 @@ def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores):
             print(f"   {s:4d}-{s+len(w):4d}: CD={cd_w:.6f} (std {w['CD'].std():.1e}) | CL={cl_w:.5f} | L/D={cl_w/cd_w:.2f}")
 
         m = read_cfd_metrics(os.path.join(sub, "history.csv"), avg_window=300)
-        thick, camber, te_y = measure_surface_geometry(os.path.join(sub, "surface_flow.csv"))
+        thick, camber, le_y, te_y = measure_surface_geometry(os.path.join(sub, "surface_flow.csv"))
+        if base_le_y is None:
+            base_le_y, base_te_y = le_y, te_y
+        d_alpha = math.degrees(math.atan2((le_y - base_le_y) - (te_y - base_te_y), 1.0))
+
         summary.append({
             "iter": it,
             "cd": m["cd"],
@@ -686,7 +722,9 @@ def run_verify(cfg, wk_dir, iters_to_check, verify_iters, cores):
             "rms_w": m["rms_w_last"],
             "max_thick": float(thick.max()),
             "max_camber": float(np.max(np.abs(camber))),
+            "le_y": le_y,
             "te_y": te_y,
+            "d_alpha_deg": d_alpha,
         })
 
     if summary:
@@ -718,10 +756,7 @@ def select_best_feasible_iter(wk_dir):
     df = pd.read_csv(metrics_path)
     if df.empty:
         return None
-    if "feasible" in df.columns and (df["feasible"] == 1).any():
-        sub = df[df["feasible"] == 1]
-    else:
-        sub = df
+    sub = df[df["feasible"] == 1] if ("feasible" in df.columns and (df["feasible"] == 1).any()) else df
     return int(sub.loc[sub["obj"].idxmin(), "iter"])
 
 
@@ -744,7 +779,9 @@ def run_optimization(cfg, args):
         cores=args.cores,
         cmz_max=args.cmz_max,
         min_thick_ratio=args.min_thick_ratio,
+        edge_tol=args.edge_tol,
         ffd_bounds=ffd_bounds,
+        init_restart=args.init_restart,
     )
 
     opt = nlopt.opt(nlopt.LD_MMA, N_VARS)
@@ -760,6 +797,10 @@ def run_optimization(cfg, args):
         opt.add_inequality_mconstraint(
             evaluator.thickness_constraints, np.full(len(THICK_STATIONS), 1e-4)
         )
+    if args.edge_tol > 0:
+        opt.add_inequality_mconstraint(
+            evaluator.edge_pin_constraints, np.full(4, 1e-5)
+        )
 
     opt.set_maxeval(args.max_eval)
     opt.set_ftol_rel(1e-4)
@@ -767,7 +808,8 @@ def run_optimization(cfg, args):
 
     print(
         f"\nStart optymalizacji NLopt (LD_MMA): max(L/D), |CMz|<={args.cmz_max}, "
-        f"t/t0>={args.min_thick_ratio}, x in [{-args.box_bound}, {args.box_bound}]"
+        f"t/t0>={args.min_thick_ratio}, |dy_LE,TE|<={args.edge_tol}, "
+        f"x in [{-args.box_bound}, {args.box_bound}]"
     )
     t0 = time.time()
     try:
@@ -779,10 +821,13 @@ def run_optimization(cfg, args):
     best_it = select_best_feasible_iter(wk_dir)
     if args.verify_final and best_it is not None:
         to_check = sorted(set([1, best_it]))
-        run_verify(cfg, wk_dir, to_check, args.verify_iters, args.cores)
+        run_verify(cfg, wk_dir, to_check, args.verify_iters, args.cores, args.init_restart)
 
     try:
-        generate_summary(wk_dir, hist_dir, cmz_max=args.cmz_max, flow_cfg=cfg)
+        generate_summary(
+            wk_dir, hist_dir, cmz_max=args.cmz_max,
+            min_thick_ratio=args.min_thick_ratio, flow_cfg=cfg
+        )
     except Exception as e:
         print(f"Blad postprocessingu: {e}")
 
@@ -793,14 +838,16 @@ def parse_args():
     p = argparse.ArgumentParser(description="Optymalizacja ksztaltu profilu NACA 0012 (SU2 + NLopt)")
     p.add_argument("--mode", choices=["opt", "fd-check", "verify", "inspect"], default="opt")
     p.add_argument("--work-dir", default="workspace_opt")
+    p.add_argument("--init-restart", default="reference/restart_flow.dat")
     p.add_argument("--cores", type=int, default=4)
-    p.add_argument("--max-eval", type=int, default=20)
-    p.add_argument("--cfd-iters", type=int, default=1500)
-    p.add_argument("--adj-iters", type=int, default=600)
+    p.add_argument("--max-eval", type=int, default=16)
+    p.add_argument("--cfd-iters", type=int, default=1200)
+    p.add_argument("--adj-iters", type=int, default=500)
     p.add_argument("--adj-cfl", type=float, default=50.0)
-    p.add_argument("--verify-iters", type=int, default=3500)
+    p.add_argument("--verify-iters", type=int, default=4500)
     p.add_argument("--cmz-max", type=float, default=0.05)
     p.add_argument("--min-thick-ratio", type=float, default=0.90)
+    p.add_argument("--edge-tol", type=float, default=5e-4, help="Maksymalny ruch pionowy LE/TE (<=0 wylacza)")
     p.add_argument("--box-bound", type=float, default=0.06)
     p.add_argument("--remesh", action="store_true")
     p.add_argument("--verify-final", action="store_true")
@@ -836,7 +883,7 @@ def main():
         if not iters:
             best_it = select_best_feasible_iter(args.work_dir)
             iters = sorted(set([1, best_it])) if best_it else [1]
-        run_verify(cfg, args.work_dir, iters, args.verify_iters, args.cores)
+        run_verify(cfg, args.work_dir, iters, args.verify_iters, args.cores, args.init_restart)
     elif args.mode == "inspect":
         run_inspect(args.work_dir)
 
